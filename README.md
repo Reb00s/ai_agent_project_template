@@ -5,11 +5,10 @@ MCP-источники, управление задачами и контекс�
 
 ## Быстрый старт
 
-1. Скопируй шаблон: `cp -r ai-agent-project-template my-project && cd my-project`
-2. Заполни `.env` (скопируй из `.env.example`)
-3. Проверь окружение: `bash scripts/health_check.sh`
-4. Запиши первую задачу в `tasks/current.md`
-5. Запусти агента: `bash scripts/run.sh`
+1. Заполни `.env` (скопируй из `.env.example`)
+2. Проверь окружение: `bash scripts/health_check.sh`
+3. Запиши первую задачу в `tasks/current.md`
+4. Запусти агента: `bash scripts/run.sh`
 
 ## Как возобновить работу
 
