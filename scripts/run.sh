@@ -1,39 +1,32 @@
-    #!/usr/bin/env bash
-    set -euo pipefail
-    cd "$(dirname "$0")/.."
-    set -a; [ -f .env ] && . ./.env; set +a
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+set -a; [ -f .env ] && . ./.env; set +a
 
-    if [ -z "${1:-}" ]; then
-      echo "Использование: bash scripts/run.sh '<задача для агента>'"
-      exit 1
-    fi
+if [ -z "${1:-}" ]; then
+  echo "Использование: bash scripts/run.sh '<задача для агента>'"
+  exit 1
+fi
 
-    # --- Сбор стартового контекста (аналог автоподхвата AGENTS.md) ---
-    CONTEXT=$(cat AGENTS.md)
-    CONTEXT+=$'
+# --- Сбор стартового контекста (аналог автоподхвата AGENTS.md) ---
+CONTEXT=$(cat AGENTS.md)
+CONTEXT+=$'\n\n=== TASKS/CURRENT.MD ===\n'
+CONTEXT+=$(cat tasks/current.md 2>/dev/null || echo "нет активной задачи")
+CONTEXT+=$'\n\n=== ПОСЛЕДНЯЯ ЗАМЕТКА КОНТЕКСТА (конец context_log.md) ===\n'
+CONTEXT+=$(tail -n 30 memory/context_log.md 2>/dev/null || echo "лог пуст")
+CONTEXT+=$'\n\n=== MCP-ИСТОЧНИКИ ===\n'
+CONTEXT+=$(cat mcp/mcp_config.json 2>/dev/null || echo "нет конфига MCP")
+CONTEXT+=$'\n\n=== СКИЛЛЫ (skills/skills.md) ===\n'
+CONTEXT+=$(cat skills/skills.md 2>/dev/null || echo "нет реестра скиллов")
 
-=== TASKS/CURRENT.MD ===
-'
-    CONTEXT+=$(cat tasks/current.md 2>/dev/null || echo "нет активной задачи")
-    CONTEXT+=$'
+RUN_DIR="workspace/runs/$(date +%Y-%m-%d)_$(echo "$1" | tr ' ' '_' | cut -c1-30)"
+mkdir -p "$RUN_DIR/input" "$RUN_DIR/output" "$RUN_DIR/logs"
 
-=== ПОСЛЕДНЯЯ ЗАМЕТКА КОНТЕКСТА (конец context_log.md) ===
-'
-    CONTEXT+=$(tail -n 30 memory/context_log.md 2>/dev/null || echo "лог пуст")
-    CONTEXT+=$'
+echo "$1" > "$RUN_DIR/input/prompt.txt"
+echo "$CONTEXT" > "$RUN_DIR/input/context.md"
 
-=== MCP-ИСТОЧНИКИ ===
-'
-    CONTEXT+=$(cat mcp/mcp_config.json 2>/dev/null || echo "нет конфига MCP")
-
-    RUN_DIR="workspace/runs/$(date +%Y-%m-%d)_$(echo "$1" | tr ' ' '_' | cut -c1-30)"
-    mkdir -p "$RUN_DIR/input" "$RUN_DIR/output" "$RUN_DIR/logs"
-
-    echo "$1" > "$RUN_DIR/input/prompt.txt"
-    echo "$CONTEXT" > "$RUN_DIR/input/context.md"
-
-    echo "Запуск: $RUN_DIR"
-    echo "Контекст собран: AGENTS.md + current.md + context_log + mcp_config"
-    # TODO: подставь команду запуска твоего агента, например:
-    #   claude -p "$(cat "$RUN_DIR/input/context.md")" --append-system-prompt "$1"
-    #   или: agent run --context-file "$RUN_DIR/input/context.md" --task "$1"
+echo "Запуск: $RUN_DIR"
+echo "Контекст собран: AGENTS.md + current.md + context_log + mcp_config + skills.md"
+# TODO: подставь команду запуска твоего агента, например:
+#   claude -p "$(cat "$RUN_DIR/input/context.md")" --append-system-prompt "$1"
+#   или: agent run --context-file "$RUN_DIR/input/context.md" --task "$1"
