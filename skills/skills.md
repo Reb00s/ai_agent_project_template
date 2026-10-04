@@ -15,5 +15,7 @@
 | Скилл | Когда использовать |
 |---|---|
 | `grill-me` | Новая задача: интервью-стресс-тест плана (дерево решений, раунды вопросов с рекомендациями агента; факты агент добывает сам) |
+| `ponytail` | Любая задача с кодом/скриптами: минималистичное решение (лестница YAGNI → reuse → stdlib → native → one-line). Уровни аргументом: `lite` / `full` (default) / `ultra`; выключается фразой «stop ponytail». Дословная копия из [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) (MIT), только frontmatter адаптирован под Kimi |
+| `ponytail-review` | Ревью диффа на over-engineering: одна строка на находку — что вырезать и чем заменить (`delete/stdlib/native/reuse/yagni/shrink`). Не ищет баги, только сложность. Там же (MIT) |
 
 Пути к скиллам: `skills/<имя>/SKILL.md`. Как добавить скилл — `skills/README.md`.

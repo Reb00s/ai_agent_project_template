@@ -8,6 +8,16 @@ for d in config mcp workspace/runs workspace/scratch tasks/archive memory skills
 done
 echo "OK: структура папок"
 
+# 1b. Симлинки skills/ → .kimi-code/skills/ (авто-подхват скиллов в Kimi Code)
+mkdir -p .kimi-code/skills
+for d in skills/*/; do
+  name=$(basename "$d")
+  if [ -f "$d/SKILL.md" ]; then
+    ln -sfn "../../skills/$name" ".kimi-code/skills/$name"
+  fi
+done
+echo "OK: симлинки .kimi-code/skills/ ($(ls .kimi-code/skills | wc -l) шт.)"
+
 # 2. .env
 if [ ! -f .env ]; then
   cp .env.example .env

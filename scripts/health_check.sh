@@ -30,6 +30,17 @@ else
   echo "FAIL: нет skills/skills.md"; FAIL=1
 fi
 
+# 3b. Симлинки для авто-подхвата Kimi Code (создаёт setup.sh)
+if [ -d .kimi-code/skills ]; then
+  bad=0
+  for s in .kimi-code/skills/*; do
+    [ -e "$s" ] || { echo "FAIL: битый симлинк $s (перезапусти bash scripts/setup.sh)"; FAIL=1; bad=1; }
+  done
+  [ "$bad" -eq 0 ] && echo "OK: .kimi-code/skills/ (симлинки валидны)"
+else
+  echo "INFO: .kimi-code/skills/ нет — авто-подхват Kimi Code не настроен (создаст setup.sh)"
+fi
+
 # 4. Конфиги валидны
 if command -v python3 >/dev/null; then
   if [ -f mcp/mcp_config.json ]; then

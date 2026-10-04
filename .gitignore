@@ -1,5 +1,6 @@
 .env
 workspace/scratch/
 workspace/runs/*/logs/
+.kimi-code/skills/
 __pycache__/
 *.log
