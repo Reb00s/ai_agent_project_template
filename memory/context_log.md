@@ -35,7 +35,15 @@
 ---
 
 ---
-## [2026-10-04] Задача: Подключение headroom (сжатие токенов) — ОТМЕНЕНА ОПЕРАТОРОМ
+## [2026-10-04] Задача: Подключение k8s-сервера (192.168.1.111) через MCP — ЗАВЕРШЕНА
+- Цель: агент управляет кластером через MCP (mcp-server-kubernetes) по токену SA; bootstrap автоматизирован; секреты вне git.
+- Сделано: разведка (k3s v1.36.4, нода iamodels, GPU RTX 3060, traefik-ingress, исходящий HTTPS есть); `scripts/k8s_bootstrap.sh` (SA kimi-agent + cluster-admin, токен 8760ч, kubeconfig ~/.kube/config 600, генерирует .kimi-code/mcp.json без секретов); kubectl v1.37.1 + node v24.21.0 в ~/.local/bin (без sudo); health_check — проверка «секреты не в индексе git» + kubeconfig; реестр mcp/mcp_config.json — запись kubernetes-local. Проверки: kubectl get nodes OK, MCP v4.1.9 инициализируется по stdio.
+- Остановились на: приёмке оператором; MCP подключится Kimi Code при старте НОВОЙ сессии (проверить /mcp).
+- Ключевые решения: cluster-admin по решению оператора (Q2-a); бинарники в ~/.local/bin вместо apt (нет sudo).
+- Следующий шаг: приёмка → коммит; в фазе 2 — публикация сервисов через traefik-ingress, GPU-поды.
+- Артефакты: `scripts/k8s_bootstrap.sh`, `mcp/mcp_config.json`, `scripts/health_check.sh`, `.gitignore`, `~/.kube/config` (вне репо), `.kimi-code/mcp.json` (gitignored).
+- Проблемы: пароль SSH `reb00s` слабый и засвечен в чате — предложено: ротация + ключи. Пароль хранится в workspace/scratch/askpass.sh (gitignored) — удалить после перехода на ключи.
+---
 - Цель была: сжатие токенов через headroom — сначала файлы шаблона (этап A), затем идея поднять proxy как под на k8s-сервере 192.168.1.111.
 - Итог: отбой до приёмки, артефакты откачены к состоянию коммита «Скиллы ponytail…»: скилл `skills/headroom/`, запись в `mcp/mcp_config.json`, `mcp/tests/test_headroom.md`, строка реестра. В `setup.sh` добавлена чистка битых симлинков.
 - Ключевые решения: оператор остановил и k8s-направление («harness-сервисы подами на 192.168.1.111») — повторно не предлагать без запроса.

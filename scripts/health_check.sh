@@ -41,6 +41,19 @@ else
   echo "INFO: .kimi-code/skills/ нет — авто-подхват Kimi Code не настроен (создаст setup.sh)"
 fi
 
+# 3c. Секреты не в индексе git
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  if git ls-files | grep -q '^\.kimi-code/mcp\.json$'; then
+    echo "FAIL: .kimi-code/mcp.json в индексе git (может содержать креды)"; FAIL=1
+  elif git grep -lI -e 'client-key-data' -e 'client-certificate-data' -- . ':(exclude)scripts/health_check.sh' >/dev/null 2>&1; then
+    echo "FAIL: в индексе git есть файлы с данными kubeconfig"; FAIL=1
+  else
+    echo "OK: секреты не в индексе git"
+  fi
+fi
+# kubeconfig локально (не обязателен для шаблона)
+[ -f "$HOME/.kube/config" ] && echo "OK: ~/.kube/config есть" || echo "INFO: ~/.kube/config нет (запусти bash scripts/k8s_bootstrap.sh для подключения k8s)"
+
 # 4. Конфиги валидны
 if command -v python3 >/dev/null; then
   if [ -f mcp/mcp_config.json ]; then

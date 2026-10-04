@@ -2,5 +2,6 @@
 workspace/scratch/
 workspace/runs/*/logs/
 .kimi-code/skills/
+.kimi-code/mcp.json
 __pycache__/
 *.log

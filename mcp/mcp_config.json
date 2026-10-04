@@ -19,6 +19,14 @@
         "read"
       ],
       "note": "Пример внешнего источника через HTTP"
+    },
+    "kubernetes-local": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-kubernetes"
+      ],
+      "note": "Локальный k3s-кластер 192.168.1.111 (нода iamodels, traefik-ingress). Требует: bash scripts/k8s_bootstrap.sh — создаёт ServiceAccount kimi-agent (cluster-admin), пишет kubeconfig в ~/.kube/config (600, вне репо) и генерирует .kimi-code/mcp.json (в .gitignore). Секреты не коммитить."
     }
   }
 }
