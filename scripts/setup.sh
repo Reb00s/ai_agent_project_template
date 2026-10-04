@@ -10,6 +10,10 @@ echo "OK: структура папок"
 
 # 1b. Симлинки skills/ → .kimi-code/skills/ (авто-подхват скиллов в Kimi Code)
 mkdir -p .kimi-code/skills
+# чистим битые симлинки (скилл удалён из skills/)
+for s in .kimi-code/skills/*; do
+  [ -e "$s" ] || { rm -f "$s"; echo "Удалён битый симлинк: $s"; }
+done
 for d in skills/*/; do
   name=$(basename "$d")
   if [ -f "$d/SKILL.md" ]; then
