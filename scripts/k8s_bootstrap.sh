@@ -1,23 +1,47 @@
 #!/usr/bin/env bash
 # Bootstrap подключения к k8s-серверу: создаёт ServiceAccount с правами,
 # забирает токен и собирает локальный kubeconfig + .kimi-code/mcp.json.
-# Секреты НЕ логируются и НЕ попадают в репозиторий.
+#
+# Данные подключения НЕ хранятся в репозитории: скрипт спрашивает SSH user@host
+# и пароль интерактивно. Неинтерактивный запуск: задайте K8S_SERVER и
+# K8S_SSH_PASSWORD в окружении. Секреты не логируются.
 # Идемпотентен: повторный запуск перевыпускает токен.
-# Требует: ssh-доступа (пароль спросит ssh), kubectl на сервере.
-# Переопределяемо: K8S_SERVER, K8S_API, K8S_SA_NAMESPACE, K8S_SA_NAME, KUBECONFIG_OUT
+# Требует: ssh-доступа, kubectl на сервере; локально — kubectl и node/npx (шаг 4 задачи).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-SERVER="${K8S_SERVER:-reb00s@192.168.1.111}"
-API="${K8S_API:-https://192.168.1.111:6443}"
+# --- Данные подключения: спросить или взять из окружения ---
+if [ -z "${K8S_SERVER:-}" ]; then
+  read -r -p "SSH user@host сервера k8s (например, user@192.168.1.111): " K8S_SERVER
+fi
+[ -n "${K8S_SERVER}" ] || { echo "FAIL: сервер не задан"; exit 1; }
+HOST="${K8S_SERVER#*@}"
+API="${K8S_API:-https://${HOST}:6443}"
+
+if [ -z "${K8S_SSH_PASSWORD:-}" ]; then
+  read -r -s -p "SSH пароль для ${K8S_SERVER}: " K8S_SSH_PASSWORD
+  echo
+fi
+[ -n "${K8S_SSH_PASSWORD}" ] || { echo "FAIL: пароль не задан"; exit 1; }
+
+# --- Временный askpass (пароль не попадает в argv/ps) ---
+ASKPASS_TMP=$(mktemp /tmp/k8s-bootstrap-askpass.XXXXXX)
+chmod 700 "$ASKPASS_TMP"
+printf '#!/bin/sh\necho "$K8S_SSH_PASSWORD"\n' > "$ASKPASS_TMP"
+export K8S_SSH_PASSWORD
+export SSH_ASKPASS="$ASKPASS_TMP" SSH_ASKPASS_REQUIRE=force
+trap 'rm -f "$ASKPASS_TMP"' EXIT
+SSH_CMD=(ssh -o ConnectTimeout=10 -o NumberOfPasswordPrompts=3
+  -o StrictHostKeyChecking=accept-new
+  "$K8S_SERVER" bash -s)
+
 SA_NS="${K8S_SA_NAMESPACE:-default}"
 SA_NAME="${K8S_SA_NAME:-kimi-agent}"
 OUT="${KUBECONFIG_OUT:-$HOME/.kube/config}"
 MCP_JSON=".kimi-code/mcp.json"
 
-echo "== 1/3 Создание ServiceAccount и токена на сервере =="
-REMOTE_OUT=$(ssh -o ConnectTimeout=10 -o NumberOfPasswordPrompts=3 "$SERVER" \
-  bash -s -- "$SA_NS" "$SA_NAME" <<'REMOTE'
+echo "== 1/3 Создание ServiceAccount и токена на ${K8S_SERVER} =="
+REMOTE_OUT=$("${SSH_CMD[@]}" -- "$SA_NS" "$SA_NAME" <<'REMOTE'
 set -euo pipefail
 NS="$1"; SA="$2"
 kubectl get ns "$NS" >/dev/null
@@ -47,13 +71,13 @@ clusters:
 - cluster:
     certificate-authority-data: ${CA}
     server: ${API}
-  name: k3s-iamodels
+  name: k8s-${HOST}
 contexts:
 - context:
-    cluster: k3s-iamodels
+    cluster: k8s-${HOST}
     user: ${SA_NAME}
-  name: ${SA_NAME}@k3s-iamodels
-current-context: ${SA_NAME}@k3s-iamodels
+  name: ${SA_NAME}@k8s-${HOST}
+current-context: ${SA_NAME}@k8s-${HOST}
 users:
 - name: ${SA_NAME}
   user:
