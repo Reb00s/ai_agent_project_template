@@ -8,6 +8,14 @@ if [ -z "${1:-}" ]; then
   exit 1
 fi
 
+# --- Клиент Kimi Code CLI: проверка и автоустановка (официальный скрипт) ---
+export PATH="$HOME/.local/bin:$PATH"
+if ! command -v kimi >/dev/null 2>&1; then
+  echo "Kimi Code CLI не найден — устанавливаю официальным скриптом..."
+  curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
+fi
+command -v kimi >/dev/null 2>&1 || { echo "FAIL: не удалось установить Kimi Code CLI"; exit 1; }
+
 # --- Сбор стартового контекста (аналог автоподхвата AGENTS.md) ---
 CONTEXT=$(cat AGENTS.md)
 CONTEXT+=$'\n\n=== TASKS/CURRENT.MD ===\n'
