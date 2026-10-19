@@ -12,11 +12,11 @@ MCP-источники, управление задачами и контекс�
 
 ## Быстрый старт
 
-1. Скопируй шаблон: `cp -r ai-agent-project-template my-project && cd my-project`
-2. Инициализируй окружение: `bash scripts/setup.sh` (создаст структуру, `.env` и симлинки скиллов для Kimi Code)
-3. Заполни `.env` и проверь: `bash scripts/health_check.sh`
-4. Диктуй агенту задачу — новая задача пройдёт grill-me (интервью) и превратится
-   в план (правила — в `skills/skills.md`)
+1. Скопируй шаблон: `git clone <репо> my-project && cd my-project`
+2. Запусти инициализацию: `bash scripts/init.sh` — поставит Kimi Code CLI (официальный скрипт),
+   создаст структуру, симлинки скиллов, `.env`; по запросу подключит кластер k8s через MCP
+3. Заполни `.env` (напомнит `bash scripts/health_check.sh`) — и работай с агентом: `kimi`
+   или `bash scripts/run.sh '<задача>'` (контекстный запуск без TUI)
 
 ## Жизненный цикл задачи
 

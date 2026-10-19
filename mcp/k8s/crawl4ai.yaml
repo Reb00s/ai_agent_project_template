@@ -1,0 +1,73 @@
+# Crawl4AI (парсер сайтов для агента) — namespace harness, MCP по NodePort 30112.
+# Секреты НЕ здесь: скрипт scripts/crawl4ai_deploy.sh создаёт Secret crawl4ai-auth
+# из .env (CRAWL4AI_API_TOKEN, SECRET_KEY).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: harness
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crawl4ai
+  namespace: harness
+  labels:
+    app: crawl4ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crawl4ai
+  template:
+    metadata:
+      labels:
+        app: crawl4ai
+    spec:
+      containers:
+        - name: crawl4ai
+          image: unclecode/crawl4ai:latest
+          # В образе нет ENTRYPOINT, только CMD ["bash", "entrypoint.sh"] —
+          # поэтому command задаём явно, иначе args попытается исполниться как бинарь.
+          command: ["bash", "entrypoint.sh"]
+          ports:
+            - containerPort: 11235
+          env:
+            # k8s сам подсовывает CRAWL4AI_PORT=tcp://<cluster-ip>:11235
+            # (переменная от Service с тем же именем) — фиксируем реальный порт.
+            - name: CRAWL4AI_PORT
+              value: "11235"
+          envFrom:
+            - secretRef:
+                name: crawl4ai-auth
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: crawl4ai
+  namespace: harness
+  labels:
+    app: crawl4ai
+spec:
+  type: NodePort
+  selector:
+    app: crawl4ai
+  ports:
+    - name: mcp
+      port: 11235
+      targetPort: 11235
+      nodePort: 30112

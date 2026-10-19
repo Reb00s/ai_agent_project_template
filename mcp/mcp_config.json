@@ -27,6 +27,14 @@
         "mcp-server-kubernetes"
       ],
       "note": "Локальный k3s-кластер (нода iamodels, traefik-ingress). Подключение: bash scripts/k8s_bootstrap.sh — интерактивно спрашивает SSH user@host и пароль (в репо не хранятся), создаёт ServiceAccount kimi-agent (cluster-admin), пишет kubeconfig в ~/.kube/config (600, вне репо) и генерирует .kimi-code/mcp.json (в .gitignore). Секреты не коммитить."
+    },
+    "crawl4ai-local": {
+      "transport": "sse",
+      "url": "http://192.168.1.111:30112/mcp/sse",
+      "headers": {
+        "Authorization": "Bearer ${CRAWL4AI_API_TOKEN}"
+      },
+      "note": "Парсер сайтов Crawl4AI, self-hosted в кластере (namespace harness, NodePort 30112). Инструменты: md, html, screenshot, pdf, execute_js, crawl, ask. Деплой/пересоздание: bash scripts/crawl4ai_deploy.sh — берёт CRAWL4AI_API_TOKEN и SECRET_KEY из .env (генерирует при отсутствии), создаёт Secret crawl4ai-auth и применяет mcp/k8s/crawl4ai.yaml. Токен в репо не коммитить; запись с реальным токеном живёт в .kimi-code/mcp.json (в .gitignore)."
     }
   }
 }

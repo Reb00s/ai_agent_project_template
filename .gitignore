@@ -1,6 +1,6 @@
 .env
 workspace/scratch/
-workspace/runs/*/logs/
+workspace/runs/
 .kimi-code/skills/
 .kimi-code/mcp.json
 tasks/archive/
