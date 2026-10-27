@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Следующая задача Plane для взятия в работу (правила из docs/plane.md).
 
-Печатает одну задачу — первую по порядку: приоритет (urgent → high → medium →
-low → none), затем дата изменения (статуса) по возрастанию; при равенстве —
-любая. Ищет в статусах «Задача в работе» и «Задача в доработке».
+Очередь двухуровневая: сначала все задачи «Задача в доработке» (замечания
+с тестирования), затем «Задача в работе» (новые задачи). Внутри группы —
+порядок: приоритет (urgent → high → medium → low → none), затем дата
+изменения (статуса) по возрастанию; при равенстве — любая.
 
     PLANE_API_KEY=plane_api_… python3 scripts/plane_next_task.py
 
@@ -19,7 +20,9 @@ import urllib.request
 BASE_URL = os.environ.get("PLANE_BASE_URL", "").rstrip("/")
 WORKSPACE = os.environ.get("PLANE_WORKSPACE_SLUG", "")
 PROJECT_NAME = os.environ.get("PLANE_PROJECT_NAME", "")
-TAKE_STATES = ("Задача в работе", "Задача в доработке")
+# Группы в порядке приоритета (docs/plane.md, правило 3): сначала доработки
+# по замечаниям тестирования, потом новые задачи.
+TAKE_GROUPS = (("Задача в доработке",), ("Задача в работе",))
 
 PRIORITY_ORDER = {"urgent": 0, "high": 1, "medium": 2, "low": 3, "none": 4}
 
@@ -53,11 +56,12 @@ def main():
 
     states = {row["name"]: row["id"] for row in
               api(token, "GET", f"/projects/{project['id']}/states/")["results"]}
-    missing = [name for name in TAKE_STATES if name not in states]
+    flat_states = [name for group in TAKE_GROUPS for name in group]
+    missing = [name for name in flat_states if name not in states]
     if missing:
         raise SystemExit(f"Статусы не найдены в Plane: {missing}")
 
-    take_ids = {states[name] for name in TAKE_STATES}
+    take_ids = {states[name] for name in flat_states}
     candidates = []
     cursor = None
     while True:
@@ -75,9 +79,9 @@ def main():
             break
         cursor = data.get("next_cursor")
 
-    if not candidates:
-        print("Очередь пуста: нет задач «в работе» и «на доработке».")
-        return 1
+    def state_id(issue):
+        state = issue.get("state_detail") or issue.get("state") or {}
+        return state.get("id") if isinstance(state, dict) else state
 
     def sort_key(issue):
         return (
@@ -85,19 +89,28 @@ def main():
             issue.get("updated_at") or "",
         )
 
-    issue = sorted(candidates, key=sort_key)[0]
-    state = issue.get("state_detail") or issue.get("state") or {}
-    if not isinstance(state, dict):
-        state = {"name": state}
-    seq = issue.get("sequence_id")
-    ident = f"{project['identifier']}-{seq}" if project.get("identifier") else issue["id"][:8]
-    print(f"Следующая задача: {ident} — {issue['name']}")
-    print(f"  статус: {state.get('name')} · приоритет: {issue.get('priority') or 'none'} · "
-          f"изменена: {issue.get('updated_at')}")
-    print(f"  id: {issue['id']}")
-    if issue.get("description"):
-        print(f"  описание: {issue['description'][:300]}")
-    return 0
+    # Группы по порядку: доработки полностью, затем новые задачи.
+    for group in TAKE_GROUPS:
+        group_ids = {states[name] for name in group}
+        pool = [i for i in candidates if state_id(i) in group_ids]
+        if not pool:
+            continue
+        issue = sorted(pool, key=sort_key)[0]
+        state = issue.get("state_detail") or issue.get("state") or {}
+        if not isinstance(state, dict):
+            state = {"name": state}
+        seq = issue.get("sequence_id")
+        ident = f"{project['identifier']}-{seq}" if project.get("identifier") else issue["id"][:8]
+        print(f"Следующая задача: {ident} — {issue['name']}")
+        print(f"  статус: {state.get('name')} · приоритет: {issue.get('priority') or 'none'} · "
+              f"изменена: {issue.get('updated_at')}")
+        print(f"  id: {issue['id']}")
+        if issue.get("description"):
+            print(f"  описание: {issue['description'][:300]}")
+        return 0
+
+    print("Очередь пуста: нет задач «в доработке» и «в работе».")
+    return 1
 
 
 if __name__ == "__main__":
