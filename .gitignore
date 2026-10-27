@@ -6,3 +6,4 @@ workspace/runs/
 tasks/archive/
 __pycache__/
 *.log
+*.7z
