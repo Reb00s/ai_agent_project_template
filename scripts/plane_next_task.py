@@ -3,7 +3,7 @@
 
 Печатает одну задачу — первую по порядку: приоритет (urgent → high → medium →
 low → none), затем дата изменения (статуса) по возрастанию; при равенстве —
-любая. Ищет в статусах «Задача в работе» и «Задача на доработке».
+любая. Ищет в статусах «Задача в работе» и «Задача в доработке».
 
     PLANE_API_KEY=plane_api_… python3 scripts/plane_next_task.py
 
@@ -19,7 +19,7 @@ import urllib.request
 BASE_URL = os.environ.get("PLANE_BASE_URL", "").rstrip("/")
 WORKSPACE = os.environ.get("PLANE_WORKSPACE_SLUG", "")
 PROJECT_NAME = os.environ.get("PLANE_PROJECT_NAME", "")
-TAKE_STATES = ("Задача в работе", "Задача на доработке")
+TAKE_STATES = ("Задача в работе", "Задача в доработке")
 
 PRIORITY_ORDER = {"urgent": 0, "high": 1, "medium": 2, "low": 3, "none": 4}
 
