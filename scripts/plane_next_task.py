@@ -15,9 +15,10 @@ import os
 import sys
 import urllib.request
 
-BASE_URL = os.environ.get("PLANE_BASE_URL", "http://192.168.1.116").rstrip("/")
-WORKSPACE = os.environ.get("PLANE_WORKSPACE_SLUG", "home_lab")
-PROJECT_NAME = os.environ.get("PLANE_PROJECT_NAME", "DangerWEB")
+# Значения задаёт пользователь при подключении (docs/plane.md) — дефолтов нет.
+BASE_URL = os.environ.get("PLANE_BASE_URL", "").rstrip("/")
+WORKSPACE = os.environ.get("PLANE_WORKSPACE_SLUG", "")
+PROJECT_NAME = os.environ.get("PLANE_PROJECT_NAME", "")
 TAKE_STATES = ("Задача в работе", "Задача на доработке")
 
 PRIORITY_ORDER = {"urgent": 0, "high": 1, "medium": 2, "low": 3, "none": 4}
@@ -37,6 +38,13 @@ def main():
     token = os.environ.get("PLANE_API_KEY")
     if not token:
         raise SystemExit("Задайте PLANE_API_KEY в окружении")
+    missing = [name for name, value in
+               (("PLANE_BASE_URL", BASE_URL), ("PLANE_WORKSPACE_SLUG", WORKSPACE),
+                ("PLANE_PROJECT_NAME", PROJECT_NAME)) if not value]
+    if missing:
+        raise SystemExit(
+            "Задайте переменные окружения (агент запрашивает при подключении): "
+            + ", ".join(missing))
 
     projects = api(token, "GET", "/projects/")["results"]
     project = next((p for p in projects if p["name"] == PROJECT_NAME), None)

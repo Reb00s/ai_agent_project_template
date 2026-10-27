@@ -24,9 +24,20 @@ import sys
 import urllib.error
 import urllib.request
 
-BASE_URL = os.environ.get("PLANE_BASE_URL", "http://192.168.1.116").rstrip("/")
-WORKSPACE = os.environ.get("PLANE_WORKSPACE_SLUG", "home_lab")
-PROJECT_NAME = os.environ.get("PLANE_PROJECT_NAME", "DangerWEB")
+# Значения задаёт пользователь при подключении (docs/plane.md) — дефолтов нет.
+BASE_URL = os.environ.get("PLANE_BASE_URL", "").rstrip("/")
+WORKSPACE = os.environ.get("PLANE_WORKSPACE_SLUG", "")
+PROJECT_NAME = os.environ.get("PLANE_PROJECT_NAME", "")
+
+
+def check_config():
+    missing = [name for name, value in
+               (("PLANE_BASE_URL", BASE_URL), ("PLANE_WORKSPACE_SLUG", WORKSPACE),
+                ("PLANE_PROJECT_NAME", PROJECT_NAME)) if not value]
+    if missing:
+        raise SystemExit(
+            "Задайте переменные окружения (агент запрашивает при подключении): "
+            + ", ".join(missing))
 
 TASK_FILES = ["tasks/current.md", "tasks/backlog.md"]
 CHECKBOX_RE = re.compile(r"^- \[( |x)\] +(.+?)\s*$")
@@ -115,6 +126,7 @@ def main():
     token = os.environ.get("PLANE_API_KEY")
     if not token:
         raise SystemExit("Задайте PLANE_API_KEY в окружении")
+    check_config()
 
     plane = Plane(token)
     project_id = plane.project_id(PROJECT_NAME)
