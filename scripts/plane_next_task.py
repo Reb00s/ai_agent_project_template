@@ -76,7 +76,7 @@ def main():
     labels = api(token, "GET", f"/projects/{project['id']}/labels/")["results"]
     busy_label_ids = {
         row["id"] for row in labels
-        if row["name"] == "У агента" or re.fullmatch(r"агент\d+", row["name"])
+        if row["name"] == "У агента" or re.fullmatch(r"agent\d+", row["name"])
     }
 
     take_ids = {states[name] for name in flat_states}
