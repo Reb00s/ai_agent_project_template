@@ -11,8 +11,8 @@
 
 Вывод: по умолчанию — читаемое описание одной задачи; с --json — массив
 (идентификатор, id, название, статус, приоритет, updated_at, описание,
-метки, owner_agent_id, force_new). Метки владельца не скрывают задачу:
-оркестратор использует их для возобновления того же агента.
+метки, owner_agent_ids, owner_agent_id, force_new). Метки владельцев не
+скрывают задачу: оркестратор перебирает их от свежих к старым для resume.
 Код возврата 0 — задачи найдены, 1 — очередь пуста.
 """
 import json
@@ -76,21 +76,25 @@ def main():
         raise SystemExit(f"Статусы не найдены в Plane: {missing}")
 
     labels = api(token, "GET", f"/projects/{project['id']}/labels/")["results"]
-    label_names = {row["id"]: row["name"] for row in labels}
+    label_by_id = {row["id"]: row for row in labels}
 
     def issue_labels(issue):
         return sorted(
-            label_names[label_id]
+            label_by_id[label_id]["name"]
             for label_id in issue.get("labels") or []
-            if label_id in label_names
+            if label_id in label_by_id
         )
 
-    def owner_agent_id(issue):
-        for name in issue_labels(issue):
-            match = re.fullmatch(r"agent_(?!new$)(.+)", name)
+    def owner_agent_ids(issue):
+        owners = []
+        for label_id in issue.get("labels") or []:
+            label = label_by_id.get(label_id)
+            if not label:
+                continue
+            match = re.fullmatch(r"agent_(?!new$)(.+)", label["name"])
             if match:
-                return match.group(1)
-        return None
+                owners.append((label.get("created_at") or "", match.group(1)))
+        return [agent_id for _, agent_id in sorted(owners, reverse=True)]
 
     take_ids = {states[name] for name in flat_states}
     candidates = []
@@ -160,7 +164,8 @@ def main():
                     "updated_at": issue.get("updated_at"),
                     "description": (issue.get("description") or "")[:300],
                     "labels": issue_labels(issue),
-                    "owner_agent_id": owner_agent_id(issue),
+                    "owner_agent_ids": owner_agent_ids(issue),
+                    "owner_agent_id": (owner_agent_ids(issue) or [None])[0],
                     "force_new": "agent_new" in issue_labels(issue),
                 }
                 for issue in picked
@@ -176,8 +181,8 @@ def main():
               f"изменена: {issue.get('updated_at')}")
         print(f"  id: {issue['id']}")
         print(f"  метки: {', '.join(issue_labels(issue)) or 'нет'}")
-        if owner_agent_id(issue):
-            print(f"  владелец: {owner_agent_id(issue)}")
+        if owner_agent_ids(issue):
+            print(f"  владельцы (сначала свежие): {', '.join(owner_agent_ids(issue))}")
         if "agent_new" in issue_labels(issue):
             print("  назначить нового агента: да")
         if issue.get("description"):
