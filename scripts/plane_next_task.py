@@ -15,6 +15,7 @@
 """
 import json
 import os
+import re
 import sys
 import urllib.request
 
@@ -72,6 +73,12 @@ def main():
     if missing:
         raise SystemExit(f"Статусы не найдены в Plane: {missing}")
 
+    labels = api(token, "GET", f"/projects/{project['id']}/labels/")["results"]
+    busy_label_ids = {
+        row["id"] for row in labels
+        if row["name"] == "У агента" or re.fullmatch(r"агент\d+", row["name"])
+    }
+
     take_ids = {states[name] for name in flat_states}
     candidates = []
     cursor = None
@@ -84,7 +91,8 @@ def main():
             state = issue.get("state_detail") or issue.get("state") or {}
             if not isinstance(state, dict):
                 state = {"id": state}
-            if state.get("id") in take_ids:
+            if (state.get("id") in take_ids
+                    and not busy_label_ids.intersection(issue.get("labels") or [])):
                 candidates.append(issue)
         if not data.get("next_page_results"):
             break
