@@ -10,7 +10,9 @@
     PLANE_API_KEY=plane_api_… python3 scripts/plane_next_task.py --limit 3 --json
 
 Вывод: по умолчанию — читаемое описание одной задачи; с --json — массив
-(идентификатор, id, название, статус, приоритет, updated_at, описание).
+(идентификатор, id, название, статус, приоритет, updated_at, описание,
+метки, owner_agent_id, force_new). Метки владельца не скрывают задачу:
+оркестратор использует их для возобновления того же агента.
 Код возврата 0 — задачи найдены, 1 — очередь пуста.
 """
 import json
@@ -74,10 +76,21 @@ def main():
         raise SystemExit(f"Статусы не найдены в Plane: {missing}")
 
     labels = api(token, "GET", f"/projects/{project['id']}/labels/")["results"]
-    busy_label_ids = {
-        row["id"] for row in labels
-        if re.fullmatch(r"agent\d+", row["name"])
-    }
+    label_names = {row["id"]: row["name"] for row in labels}
+
+    def issue_labels(issue):
+        return sorted(
+            label_names[label_id]
+            for label_id in issue.get("labels") or []
+            if label_id in label_names
+        )
+
+    def owner_agent_id(issue):
+        for name in issue_labels(issue):
+            match = re.fullmatch(r"agent_(?!new$)(.+)", name)
+            if match:
+                return match.group(1)
+        return None
 
     take_ids = {states[name] for name in flat_states}
     candidates = []
@@ -91,8 +104,7 @@ def main():
             state = issue.get("state_detail") or issue.get("state") or {}
             if not isinstance(state, dict):
                 state = {"id": state}
-            if (state.get("id") in take_ids
-                    and not busy_label_ids.intersection(issue.get("labels") or [])):
+            if state.get("id") in take_ids:
                 candidates.append(issue)
         if not data.get("next_page_results"):
             break
@@ -147,6 +159,9 @@ def main():
                     "priority": issue.get("priority") or "none",
                     "updated_at": issue.get("updated_at"),
                     "description": (issue.get("description") or "")[:300],
+                    "labels": issue_labels(issue),
+                    "owner_agent_id": owner_agent_id(issue),
+                    "force_new": "agent_new" in issue_labels(issue),
                 }
                 for issue in picked
             ],
@@ -160,6 +175,11 @@ def main():
         print(f"  статус: {state.get('name')} · приоритет: {issue.get('priority') or 'none'} · "
               f"изменена: {issue.get('updated_at')}")
         print(f"  id: {issue['id']}")
+        print(f"  метки: {', '.join(issue_labels(issue)) or 'нет'}")
+        if owner_agent_id(issue):
+            print(f"  владелец: {owner_agent_id(issue)}")
+        if "agent_new" in issue_labels(issue):
+            print("  назначить нового агента: да")
         if issue.get("description"):
             print(f"  описание: {issue['description'][:300]}")
     return 0
