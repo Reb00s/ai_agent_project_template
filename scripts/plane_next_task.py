@@ -91,9 +91,9 @@ def main():
             label = label_by_id.get(label_id)
             if not label:
                 continue
-            match = re.fullmatch(r"agent_(?!new$)(.+)", label["name"])
+            match = re.fullmatch(r"agent-.+", label["name"])
             if match:
-                owners.append((label.get("created_at") or "", match.group(1)))
+                owners.append((label.get("created_at") or "", match.group(0)))
         return [agent_id for _, agent_id in sorted(owners, reverse=True)]
 
     take_ids = {states[name] for name in flat_states}
