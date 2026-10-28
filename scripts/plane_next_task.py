@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Следующая задача Plane для взятия в работу (правила из docs/plane.md).
+"""Следующие задачи Plane для взятия в работу (правила из docs/plane.md).
 
 Очередь двухуровневая: сначала все задачи «Задача в доработке» (замечания
 с тестирования), затем «Задача в работе» (новые задачи). Внутри группы —
@@ -7,9 +7,11 @@
 изменения (статуса) по возрастанию; при равенстве — любая.
 
     PLANE_API_KEY=plane_api_… python3 scripts/plane_next_task.py
+    PLANE_API_KEY=plane_api_… python3 scripts/plane_next_task.py --limit 3 --json
 
-Выход: читаемое описание задачи (идентификатор, статус, приоритет, когда
-изменена, ссылка). Код возврата 0 — задача найдена, 1 — очередь пуста.
+Вывод: по умолчанию — читаемое описание одной задачи; с --json — массив
+(идентификатор, id, название, статус, приоритет, updated_at, описание).
+Код возврата 0 — задачи найдены, 1 — очередь пуста.
 """
 import json
 import os
@@ -38,6 +40,15 @@ def api(token, method, path):
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Следующие задачи Plane для взятия в работу")
+    parser.add_argument("--limit", type=int, default=1, help="сколько задач вывести (по умолчанию 1)")
+    parser.add_argument("--json", action="store_true", help="машиночитаемый JSON-массив вместо текста")
+    args = parser.parse_args()
+    if args.limit < 1:
+        args.limit = 1
+
     token = os.environ.get("PLANE_API_KEY")
     if not token:
         raise SystemExit("Задайте PLANE_API_KEY в окружении")
@@ -90,27 +101,60 @@ def main():
         )
 
     # Группы по порядку: доработки полностью, затем новые задачи.
+    # Берём до args.limit задач суммарно.
+    picked = []
     for group in TAKE_GROUPS:
+        if len(picked) >= args.limit:
+            break
         group_ids = {states[name] for name in group}
-        pool = [i for i in candidates if state_id(i) in group_ids]
-        if not pool:
-            continue
-        issue = sorted(pool, key=sort_key)[0]
+        pool = sorted(
+            (i for i in candidates if state_id(i) in group_ids),
+            key=sort_key,
+        )
+        picked.extend(pool[: args.limit - len(picked)])
+
+    if not picked:
+        if args.json:
+            print("[]")
+        else:
+            print("Очередь пуста: нет задач «в доработке» и «в работе».")
+        return 1
+
+    def describe(issue):
         state = issue.get("state_detail") or issue.get("state") or {}
         if not isinstance(state, dict):
             state = {"name": state}
         seq = issue.get("sequence_id")
         ident = f"{project['identifier']}-{seq}" if project.get("identifier") else issue["id"][:8]
+        return ident, state
+
+    if args.json:
+        print(json.dumps(
+            [
+                {
+                    "identifier": describe(issue)[0],
+                    "id": issue["id"],
+                    "name": issue["name"],
+                    "state": describe(issue)[1].get("name"),
+                    "priority": issue.get("priority") or "none",
+                    "updated_at": issue.get("updated_at"),
+                    "description": (issue.get("description") or "")[:300],
+                }
+                for issue in picked
+            ],
+            ensure_ascii=False,
+        ))
+        return 0
+
+    for issue in picked:
+        ident, state = describe(issue)
         print(f"Следующая задача: {ident} — {issue['name']}")
         print(f"  статус: {state.get('name')} · приоритет: {issue.get('priority') or 'none'} · "
               f"изменена: {issue.get('updated_at')}")
         print(f"  id: {issue['id']}")
         if issue.get("description"):
             print(f"  описание: {issue['description'][:300]}")
-        return 0
-
-    print("Очередь пуста: нет задач «в доработке» и «в работе».")
-    return 1
+    return 0
 
 
 if __name__ == "__main__":
